@@ -10,6 +10,8 @@ void libera (void *p);
 
 int main(void)
 {
+
+
 	FILE *f = fopen("arquivo.txt", "r");
 	funcp function = compila(f);
 	int i = (*function)(10, 20);
