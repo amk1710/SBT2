@@ -10,9 +10,9 @@ void libera (void *p);
 
 int main(void)
 {
-	FILE *f = fopen("arquivo.txt", "r");
+	FILE *f = fopen("programa.txt", "r");
 	funcp function = compila(f);
-	int i = (*function)(10, 20);
+	int i = (*function)(10, 12, 3);
 	printf("%d\n", i);
 	libera(function);
 	return 0;
