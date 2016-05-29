@@ -1,16 +1,12 @@
 .text
 
-movl %edi, %r10d
 
-movl %esi, %r10d
+addl %r11d, %r10d
 
-movl %edx, %r10d
-
-movl %edi, %r11d
-
-movl %esi, %r11d
-
-movl %edx, %r11d
+imull %r11d, %r10d
 
 
+subl %r11d, %r10d
 
+
+movl %r10d, -4(%rbp)
