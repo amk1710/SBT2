@@ -7,7 +7,7 @@
 
 typedef int (*funcp) ();
 
-int pos;
+static int pos = 0;
 //a posição do vetor de unsigned char que será a função.
 
 
@@ -18,48 +18,14 @@ union intchar{
 typedef union intchar Intchar; /* usado para usar pedaços de inteiros em comandos */
 
 
-int alocada[20]; /* usado para informar quais variaveis já foram alocadas na pilha */
+static int ses[50]; /* usado para guardar as posições no vetor area dos if's que nao foram tratados no primeiro momento */
 
-int posdalinha[50]; /* usado para guardar em que posição do vetor começa cada linha do programa */
+static int alocada[20]; /* usado para informar quais variaveis devem ser alocadas na pilha */
 
-
-//função aloca espaço para todas as variáveis até a variável de número n, se ainda não foram alocadas.
-void prepara_variavel(int n, unsigned char * area){
-	int i;
-	Intchar aloc;
-	aloc.i = 0;
-	if(alocada[0] == 0){ /* se nenhuma foi alocada, inicializa pilha de memoria */
-		area[pos] = 0x55;
-		area[pos+1] = 0x48;
-		area[pos+2] = 0x89;
-		area[pos+3] = 0xe5;
-		pos += 4;
-	}
-	while(alocada[aloc.i] != 0 && aloc.i < 20){ /* acha a maior variavel que ja foi alocada */
-		aloc.i = aloc.i + 1;
-	}
-	i = aloc.i;	
-	aloc.i = (n - aloc.i) * 4;
-	//aloc é o número de bytes a serem alocados na pilha agora.
-	//subtrai %rsp por aloc.i
-	area[pos] = 0x48;
-	area[pos+1] = 0x83;
-	area[pos+2] = 0xec;
-	area[pos+3] = aloc.c[0];
-	pos += 4;
-	
-	// isso funciona para o número máximo de variáveis que estamos lidando, 20
-	
-	for(i = i; i <= n; i++){
-		alocada[i] = 1;
-	} /* atualiza o vetor que diz quais variaveis já foram alocadas */
-}
+static int posdalinha[50]; /* usado para guardar em que posição do vetor começa cada linha do programa */
 
 
-
-
-
-void varpc1_2_r10d(char *varpc, unsigned char *area){ /* move varpc1 para r10d */
+static void varpc1_2_r10d(char *varpc, unsigned char *area){ /* move varpc1 para r10d */
 	Intchar constante;
 	int varnum;
 	switch(varpc[0]){
@@ -104,7 +70,7 @@ void varpc1_2_r10d(char *varpc, unsigned char *area){ /* move varpc1 para r10d *
 	return;
 }
 
-void varpc2_2_r11d(char *varpc, unsigned char *area){ /* move varpc2 para r11d */
+static void varpc2_2_r11d(char *varpc, unsigned char *area){ /* move varpc2 para r11d */
 	Intchar constante;
 	int varnum;
 	switch(varpc[0]){
@@ -151,7 +117,7 @@ void varpc2_2_r11d(char *varpc, unsigned char *area){ /* move varpc2 para r11d *
 
 
 
-void retorno(char *varpc, unsigned char* area){
+static void retorno(char *varpc, unsigned char* area){
 	Intchar constante;
 	int varnum;
 	switch(varpc[0]){
@@ -190,22 +156,26 @@ void retorno(char *varpc, unsigned char* area){
 			break;
 	}
 	
-	if(alocada[0] == 1){ /* se pelo menos uma variável foi alocada: */
-		area[pos] = 0x48;
-		area[pos+1] = 0x89;  /* desaloca a pilha */
-		area[pos+2] = 0xec;
-		area[pos+3] = 0x5d;
-		pos += 4;
-	}
+	/* desaloca a pilha */
+	area[pos] = 0x48;
+	area[pos+1] = 0x89;
+	area[pos+2] = 0xec;
+	area[pos+3] = 0x5d;
+	pos += 4;
+	
 	area[pos] = 0xc3; /* ret */
 	pos += 1;		
-	return;
+	return;	
 }
 
-void atribuicao(char *var, char * varpc1, char op, char *varpc2, unsigned char* area){
+static void atribuicao(char *var, char * varpc1, char op, char *varpc2, unsigned char* area){
 	
 	int varnum = atoi(&var[1]);
-	if(alocada[varnum] == 0) prepara_variavel(varnum, area); /* se a variavel não foi alocada, a aloca */
+	
+	//if(alocada[varnum] == 0) prepara_variavel(varnum, area); se a variavel não foi alocada, a aloca 
+	
+	alocada[varnum] = 1;
+	
 	varpc1_2_r10d(varpc1, area); /* move varpc1 para %r10d */
 	varpc2_2_r11d(varpc2, area); /* move varpc2 para %r11d */	
 	switch(op){
@@ -242,7 +212,7 @@ void atribuicao(char *var, char * varpc1, char op, char *varpc2, unsigned char* 
 
 
 // função se recebe uma instrução if e a posição que ela começa no vetor. Os if's ocupam sempre o mesmo tamanho no vetor para programas de até 50 linhas, o que permite que sua construção seja adiada até o resto do programa ser construído. Isso foi necessário porque as demais instruções ocupam números variáveis de posições no vetor.
-void se(char *var, int n1, int n2, int n3, unsigned char *area, int tpos){
+static void se(char *var, int n1, int n2, int n3, unsigned char *area, int tpos){
 	int varnum;
 	Intchar descn1; 
 	Intchar descn2;
@@ -259,9 +229,9 @@ void se(char *var, int n1, int n2, int n3, unsigned char *area, int tpos){
 	tpos += 4;
 	//********
 	
-	descn1.i = posdalinha[n1-1] - (tpos + 6) -2;
-	descn2.i = posdalinha[n2-1] - (tpos + 8) -2;
-	descn3.i = posdalinha[n3-1] - (tpos + 4) -2; 
+	descn1.i = posdalinha[n1-1] - (tpos + 10) -6;
+	descn2.i = posdalinha[n2-1] - (tpos + 16) -6;
+	descn3.i = posdalinha[n3-1] - (tpos + 4) -6; 
 		
 	//cmp $0, %r10d
 	area[tpos] = 0x41;
@@ -270,18 +240,31 @@ void se(char *var, int n1, int n2, int n3, unsigned char *area, int tpos){
 	area[tpos+3] = 0x00;
 	
 	//jg para n3
-	area[tpos+4] = 0x7f;
-	area[tpos+5] = descn3.c[0];
+	area[tpos+4] = 0x0f;
+	area[tpos+5] = 0x8f;
+	area[tpos+6] = descn3.c[0];
+	area[tpos+7] = descn3.c[1];
+	area[tpos+8] = descn3.c[2];
+	area[tpos+9] = descn3.c[3];
 	
-	//jl para n1
-	area[tpos+6] = 0x7c;
-	area[tpos+7] = descn1.c[0];
+	//jl para n1	
+	area[tpos+10] = 0x0f;
+	area[tpos+11] = 0x8c;
+	area[tpos+12] = descn1.c[0];
+	area[tpos+13] = descn1.c[1];
+	area[tpos+14] = descn1.c[2];
+	area[tpos+15] = descn1.c[3];
 	
-	//je para n2
-	area[tpos+8] = 0x74;
-	area[tpos+9] = descn2.c[0];
 	
-	tpos += 10;
+	//je para n2	
+	area[tpos+16] = 0x0f;
+	area[tpos+17] = 0x84;
+	area[tpos+18] = descn2.c[0];
+	area[tpos+19] = descn2.c[1];
+	area[tpos+20] = descn2.c[2];
+	area[tpos+21] = descn2.c[3];
+	
+	tpos += 22;
 	
 	
 	
@@ -289,29 +272,43 @@ void se(char *var, int n1, int n2, int n3, unsigned char *area, int tpos){
 }
 
 
-int ses[50]; /* usado para guardar as posições no vetor area dos if's que nao foram tratados no primeiro momento */
+
 
 funcp compila (FILE *f)
 {
 	funcp funcao;
-	char cmd[4];
-	char varpc1[12]; /* 20 = número de digitos de maxint + '\n' + '$' */
+	char cmd[4]; /* recebe comandos sb */
+	char varpc1[12]; /* 12 = número de digitos de maxint + '\n' + '$' */
 	char varpc2[12];
-	char op;
+	char op; /* recebe um operador */
 	int tpos; /* usado para voltar no vetor de char sem perder pos */
-	int n1, n2, n3;
+	int n1, n2, n3; /* as linhas para onde se desvia o fluxo em um if */
 	int nlinhas;
 	int retornoleitura;
+	Intchar bvar; /* usado para calcular os bytes necessários para variaveis usadas */
 	int protelado; /* numero de if's protelados */
 	unsigned char *area = (unsigned char*) malloc(1300 * sizeof(unsigned char));
-// 1300 = 50 * 26. 14 é o número de posições necessárias para a maior instrução, o vi = const + const, e 50 o número maximo de linhas
+// 1300 = 50 * 26.  26 é o número de posições necessárias para a maior instrução, um if. 50 é o número máximo de linhas.
 	for(nlinhas = 0; nlinhas < 20; nlinhas++) { alocada[nlinhas] = 0; }
 	for(nlinhas = 0; nlinhas < 50; nlinhas++) { ses[nlinhas] = -1; }
 	pos = 0;
 	nlinhas = 0;
 	protelado = 0;
-	posdalinha[0] = 0; /* a posição de inicio de cada linhas sera aqui gravada */
 	retornoleitura = fscanf(f, "%s", cmd);
+	
+	
+	area[0] = 0x55; /* pushq %rbp */
+	area[1] = 0x48; /* movq %rsp, %rbp */
+	area[2] = 0x89;
+	area[3] = 0xe5; /* */
+	area[4] = 0x48; /* sub $x, %rsp */
+	area[5] = 0x83;
+	area[6] = 0xec;
+	area[7] = 0x00; /* será mudado depois para o valor correto conforme o numero de variaveis usadas */
+	
+	pos += 8;
+	
+	
 	while(retornoleitura != EOF && nlinhas <= 50){
 		switch(cmd[0]){
 			case 'r': /* retorno */
@@ -334,7 +331,7 @@ funcp compila (FILE *f)
 				ses[protelado] = pos;
 				fscanf(f, "%s %d %d %d", varpc1, &n1, &n2, &n3);
 				
-				pos += 14;
+				pos += 26; /* tamanho do comando if */
 				protelado++;
 				nlinhas++;
 				break;
@@ -358,6 +355,22 @@ funcp compila (FILE *f)
 		protelado++;
 		se(varpc1, n1, n2, n3, area, tpos);
 	}
+	
+	// corrige o sub $0, %rsp
+	
+	for(bvar.i = 20; bvar.i > 0 && alocada[bvar.i] != 1; bvar.i = bvar.i - 1){
+	
+	}
+	bvar.i = bvar.i * 4;
+	
+	while(bvar.i % 16 != 0){
+		bvar.i = bvar.i + 4;
+	}
+		
+	area[7] = bvar.c[0];
+	
+	//****
+	
 	area = realloc(area, (pos-1)*sizeof(unsigned char)); /* muda o tamanho da memoria alocada para o tamanho necessário */
 	funcao = (funcp)area;
 	return funcao;

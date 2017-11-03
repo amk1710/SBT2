@@ -10,6 +10,8 @@ void libera (void *p);
 
 int main(void)
 {
+
+	
 //	retorno de constante
 	FILE *f = fopen("retc.txt", "r");
 	funcp function = compila(f);
@@ -61,15 +63,15 @@ int main(void)
 //	maxsize
 	f = fopen("maxsize.txt", "r");
 	function = compila(f);
-	i = (*function)();
-	printf("\n 2?: %d\n", i);
+	i = (*function)(-27);
+	printf("\n -27?: %d\n", i);
 	libera(function);
 	fclose(f);
 
 //	teto da distancia ate origem
 	f = fopen("d2o.txt", "r");
 	function = compila(f);
-	i = (*function)(-1, 10);
+	i = (*function)(-3, 4);
 	printf("\n 5?: %d\n", i);
 	libera(function);
 	fclose(f);
@@ -83,7 +85,13 @@ int main(void)
 	printf("\n 0?: %d\n", i);
 	libera(function);
 	fclose(f);
-
+//	max jump
+	f = fopen("maxjump.txt", "r");
+	function = compila(f);
+	i = (*function)(7);
+	printf("\n 7?: %d\n", i);
+	libera(function);
+	fclose(f);
 
 	
 	return 0;

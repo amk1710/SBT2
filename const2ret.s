@@ -1,12 +1,16 @@
 .text
 
 
-addl %r11d, %r10d
+pushq %rbp
 
-imull %r11d, %r10d
+movq %rsp, %rbp
 
+sub $0, %rsp
 
-subl %r11d, %r10d
+subq $-1, %rsp
 
+movq %rbp, %rsp
 
-movl %r10d, -4(%rbp)
+popq %rbp
+
+ret
